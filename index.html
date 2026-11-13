@@ -291,6 +291,13 @@ const ANIM={
     return {hip:[104,80],t:140,wa:[162,74],wb:[158,74],aa:[C[0]+13*Math.cos(f),C[1]+13*Math.sin(f)],ab:[C[0]-13*Math.cos(f),C[1]-13*Math.sin(f)]};}},
 };
 ANIM.bici_rapida=Object.assign({},ANIM.bici,{d:750});
+// Soga: una vuelta de soga por ciclo (salto básico) o dos (paso alternado).
+function sogaFn(alt){return ph=>{const th=(alt?2:1)*ph*2*Math.PI,low=Math.max(0,-Math.cos(th)),lift=7*low*low;
+  const second=alt&&ph>=0.5,la=alt?(second?0:lift):lift,lb=alt?(second?lift:0):lift;
+  return {hip:[120,90-(alt?lift*0.4:lift)],t:180,aa:[124,150-la*(alt?1.6:1)],ab:[116,150-lb*(alt?1.6:1)],
+    wa:[132+3*Math.sin(th),90+3*Math.cos(th)],wb:[110-3*Math.sin(th),90+3*Math.cos(th)],rp:th};};}
+ANIM.soga={d:700,eb:[-0.3,1],props:[{k:'rope'}],fn:sogaFn(false)};
+ANIM.soga_alt={d:1400,eb:[-0.3,1],kb:[1,0],props:[{k:'rope'}],fn:sogaFn(true)};
 for(const k in ANIM){const A=ANIM[k];if(A.p)A.P=A.p.map(canon);}
 
 const ease=f=>{if(f<.18)return 0;if(f>.82)return 1;const x=(f-.18)/.64;return x*x*(3-2*x);};
@@ -305,7 +312,7 @@ function poseAt(A,ph){
 function solve(p,A){
   const hip=p.hip,sh=add(hip,mul(dir(p.t),L.t)),hd=add(sh,mul(dir(p.t+p.n),L.neck+L.head));
   const eb=A.eb||[-1,0.3],kA=A.kbA||A.kb||[1,0],kB=A.kbB||A.kb||[1,0];
-  return {hip,sh,hd,t:p.t,c:p.c,
+  return {hip,sh,hd,t:p.t,c:p.c,rp:p.rp||0,
     armA:ik(sh,p.wa,L.ua,L.fa,eb),armB:ik(sh,p.wb,L.ua,L.fa,eb),
     legA:ik(hip,p.aa,L.th,L.sh,kA),legB:ik(hip,p.ab,L.th,L.sh,kB)};
 }
@@ -321,6 +328,8 @@ function propsMarkup(A,s,top){
     if(isBand!==top)continue;
     if(pr.k==='chair'){const{x,w,y}=pr,bx=pr.back==='r'?x+w-2:x+2;
       o+=`<path class="prop" d="M${x} ${y}H${x+w}M${x+4} ${y}V${G}M${x+w-4} ${y}V${G}M${bx} ${y}V${y-32}"/>`;}
+    else if(pr.k==='rope'){const a=s.armA.e,b=s.armB.e,c=[120+70*Math.sin(s.rp),62-147*Math.cos(s.rp)];
+      o+=`<path class="band" d="M${f1(a[0])} ${f1(a[1])}Q${f1(c[0])} ${f1(c[1])} ${f1(b[0])} ${f1(b[1])}"/>`;}
     else if(pr.k==='wall'){o+=`<path class="prop" d="M${pr.x} -16V${G}"/>`;}
     else if(pr.k==='mat'){o+=`<rect class="mat" x="${pr.x}" y="${G-2}" width="${pr.w}" height="5" rx="2"/>`;}
     else if(pr.k==='bike'){
@@ -489,6 +498,12 @@ const EX=[
  {id:'circulos',n:'Círculos de brazos',g:'movilidad',eq:'cuerpo',lv:1,t:[30,30,30],a:'circulos',m:'Hombros',
   p:['De pie, brazos estirados.','Hacé círculos amplios hacia adelante.','A mitad de tiempo, cambiá el sentido.','Movimiento suave y controlado.'],
   e:['Encoger los hombros.']},
+ {id:'soga',n:'Saltar la soga',g:'cardio',eq:'soga',lv:1,t:[30,40,45],a:'soga',m:'Cardio, gemelos, coordinación',nopick:1,
+  p:['Hacelo afuera, en piso firme y parejo (vereda, patio o cancha), con espacio libre arriba y a los costados.','Largo de la soga: pisando el centro, las manijas llegan a las axilas.','Codos cerca del cuerpo: la soga se gira con las muñecas, no con los brazos.','Saltos bajitos, de 2 o 3 cm, cayendo suave sobre la punta de los pies.','Si te trabás, retomá enseguida y seguí con el tiempo.'],
+  e:['Saltar muy alto o doblar mucho las rodillas.','Girar la soga con los hombros.','Saltar sobre pasto alto o piso irregular.']},
+ {id:'soga_alt',n:'Soga con paso alternado',g:'cardio',eq:'soga',lv:2,t:[30,40,45],a:'soga_alt',m:'Cardio, coordinación',nopick:1,
+  p:['Mismo agarre y giro de muñecas que el salto básico.','En vez de saltar con los dos pies, alterná uno y otro, como si trotaras en el lugar.','Mantené los saltos bajos y el ritmo constante.','Carga menos los gemelos que el salto con los dos pies.'],
+  e:['Subir demasiado las rodillas y perder el ritmo de la soga.']},
  {id:'marcha',n:'Marcha en el lugar',g:'cardio',eq:'cuerpo',lv:1,t:[60,60,60],a:'caminata',m:'Cardio de bajo impacto',nopick:1,
   p:['De pie, marchá en el lugar subiendo las rodillas a una altura cómoda.','Acompañá con los brazos, como al caminar rápido.','Para subir la intensidad, levantá más las rodillas o marchá más rápido.','Mantené un ritmo en el que puedas hablar.'],
   e:['Arrastrar los pies sin despegarlos del piso.']},
@@ -501,7 +516,7 @@ const EX=[
 ];
 const EXI=Object.fromEntries(EX.map(e=>[e.id,e]));
 const GRP={piernas:'Piernas',empuje:'Empuje',tiron:'Tirón',core:'Core',cardio:'Cardio',bici:'Bici',movilidad:'Movilidad'};
-const EQ={cuerpo:'Sin equipo',banda:'Banda',silla:'Silla',bici:'Bici'};
+const EQ={cuerpo:'Sin equipo',banda:'Banda',silla:'Silla',bici:'Bici',soga:'Soga'};
 const LVL=['Principiante','Intermedio','Avanzado'];
 
 /* ============================================================
@@ -560,11 +575,13 @@ const TYPES={
   bici_z2:{n:'Bici: ritmo suave',d:'Pedaleo continuo y movilidad'},
   movil:{n:'Movilidad y paseo',d:'Recuperación activa'},
   extra:{n:'Movilidad exprés',d:'Rutina corta para días de descanso'},
+  soga_int:{n:'Soga: intervalos',d:'Saltar la soga afuera: tramos fuertes y recuperación, más core'},
+  soga_int_casa:{n:'Cardio en casa: intervalos',d:'Plan B sin salir ni soga: tramos fuertes en circuito, más core'},
   bici_int_casa:{n:'Cardio en casa: intervalos',d:'Plan B sin salir: tramos fuertes en circuito, más core'},
   bici_z2_casa:{n:'Cardio suave en casa',d:'Plan B sin salir: circuito continuo de bajo impacto'},
   movil_casa:{n:'Movilidad y marcha en casa',d:'Plan B sin salir: recuperación activa'},
 };
-const OUTDOOR={bici_int:'Bici',bici_z2:'Bici',movil:'Caminata'};
+const OUTDOOR={bici_int:'Bici',soga_int:'Soga',bici_z2:'Bici',movil:'Caminata'};
 const TPL={1:['full'],2:['full','full'],3:['full','bici_int','full'],4:['sup','inf','bici_int','full'],
   5:['sup','inf','bici_int','full','bici_z2'],6:['sup','inf','bici_int','full','bici_z2','movil'],
   7:['sup','inf','bici_int','sup','inf','bici_z2','movil']};
@@ -572,13 +589,15 @@ const SLOTS={sup:['empuje','tiron','empuje','tiron','core'],inf:['piernas','core
 const EXTRA={sup:'core',inf:'cardio',full:'core'};
 function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
 function rng(seed){let a=hash(seed);return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
-function weekPlan(){const av=[];S.settings.days.forEach((v,i)=>{if(v)av.push(i);});
-  const plan=Array(7).fill(null);const tpl=TPL[av.length]||[];av.forEach((d,i)=>plan[d]=tpl[i]);return plan;}
+// Los intervalos alternan cada semana: semanas impares en bici, semanas pares con soga.
+function weekPlan(mon){const av=[];S.settings.days.forEach((v,i)=>{if(v)av.push(i);});
+  const soga=mon&&weekInfo(mon).wk%2===1;
+  const plan=Array(7).fill(null);const tpl=TPL[av.length]||[];av.forEach((d,i)=>plan[d]=soga&&tpl[i]==='bici_int'?'soga_int':tpl[i]);return plan;}
 function weekInfo(mon){const wk=Math.max(0,weeksBetween(parse(S.settings.start),mon));const phase=wk%4;
   return{wk,phase,meso:Math.floor(wk/4),deload:phase===3,label:`Semana ${wk+1} · ${phase===3?'descarga':'carga '+(phase+1)+'/3'}`};}
 
 function buildSession(mon,di,forceType,alt){
-  const plan=weekPlan();const type=forceType||plan[di];if(!type)return null;
+  const plan=weekPlan(mon);const type=forceType||plan[di];if(!type)return null;
   const outdoor=!!OUTDOOR[type],useAlt=outdoor&&(alt!=null?!!alt:!!(S.alt&&S.alt[ymd(addDays(mon,di))]));
   if(useAlt)return buildIndoor(mon,di,type,plan);
   const occ=forceType?0:plan.slice(0,di).filter(t=>t===type).length;
@@ -613,6 +632,14 @@ function buildSession(mon,di,forceType,alt){
     s.main=[timed('bici_int',work,rounds,rec,{restLabel:'Pedaleo suave'}),timed('bici_suave',300,1,30)];
     if(dur>=30){s.main.push(presc(pick('core'),2,restMain),presc(pick('core'),2,restMain));}
     s.cool=mob(1);
+  }else if(type==='soga_int'){
+    const rounds=Math.max(5,[8,10,12][lv-1]+(dur===20?-2:dur===45?2:0)+(W.deload?-2:0)+Math.min(W.meso,2));
+    const work=[30,40,45][lv-1],rec=[60,50,40][lv-1],ex={restLabel:'Recuperación: caminá suave'};
+    s.warm=[timed('jacks',30),timed('circulos',30),timed('soga',45,1,20)];
+    s.main=lv===1?[timed('soga',work,rounds,rec,ex)]
+      :[timed('soga',work,Math.ceil(rounds/2),rec,Object.assign({circ:1},ex)),timed('soga_alt',work,Math.floor(rounds/2),rec,Object.assign({circ:1},ex))];
+    if(dur>=30){s.main.push(presc(pick('core'),2,restMain),presc(pick('core'),2,restMain));}
+    s.cool=mob(2);
   }else if(type==='bici_z2'){
     const lastDay=plan.lastIndexOf('bici_z2')===di&&plan.filter(Boolean).length>=5;
     let min=dur+10+Math.min(W.meso,4)*5-(W.deload?10:0);
@@ -642,7 +669,7 @@ function buildIndoor(mon,di,type,plan){
   const corePresc=id=>{const e=EXI[id],it={id,sets:2,rest:restMain};
     if(e.r)it.reps=Math.min(25,Math.max(5,e.r[lv-1]+(W.deload?-2:W.phase)+W.meso*2));
     else it.time=Math.min(90,Math.max(15,e.t[lv-1]+(W.deload?-5:W.phase*5)+W.meso*10));return it;};
-  if(type==='bici_int'){
+  if(type==='bici_int'||type==='soga_int'){
     const rounds=Math.max(4,[6,8,10][lv-1]+(dur===20?-2:dur===45?2:0)+(W.deload?-2:0)+Math.min(W.meso,2));
     const work=[30,30,40][lv-1],rec=[60,50,40][lv-1];
     const pool=['jacks','rodillas','boxeo'].concat(lv>=2?['escaladores','salto']:[],lv>=3?['burpees']:[]);
@@ -707,7 +734,7 @@ function heroSession(s,dateStr,isToday){
       <span class="eyebrow">${s.week.label}</span>${done?'<span class="pill ok">✓ Hecho</span>':''}</div>
     <div><h2>${s.name}</h2><div class="sub">${s.desc}</div></div>
     ${altToggle(s,dateStr)}
-    <div class="stats"><div><b>${s.est}</b><span>minutos</span></div><div><b>${nEx}</b><span>ejercicios</span></div><div><b>${sets}</b><span>${s.alt?'vueltas':s.type.startsWith('bici')&&s.main[0].sets>1?'rondas':'series'}</span></div></div>
+    <div class="stats"><div><b>${s.est}</b><span>minutos</span></div><div><b>${nEx}</b><span>ejercicios</span></div><div><b>${sets}</b><span>${s.alt||s.main[0].circ?'vueltas':(s.type==='bici_int'||s.type==='soga_int')&&s.main[0].sets>1?'rondas':'series'}</span></div></div>
     <div class="row-btns">
       <button class="btn pri" data-act="start" data-date="${dateStr}">${done?'Repetir':'Empezar'}</button>
       <button class="btn sec" data-act="toggle-done" data-date="${dateStr}" data-type="${s.histType}" data-min="${s.est}">${done?'Desmarcar':'Marcar como hecha'}</button>
@@ -793,7 +820,7 @@ function renderAjustes(){
   return `<header class="head"><span class="eyebrow">Tu plan</span><h1>Ajustes</h1></header>
   <section class="card"><span class="set-l">Días en los que podés entrenar</span>
     <div class="dsel">${DC.map((d,i)=>`<button data-act="day" data-i="${i}" aria-pressed="${!!st.days[i]}" aria-label="${DIAS[i]}">${d}</button>`).join('')}</div>
-    <p class="note" style="margin:0">${n?`${n} días: ${tpl.map(x=>TYPES[x].n).join(', ')}.`:'Sin días elegidos: todos los días serán de descanso.'} Los días sin marcar quedan como descanso.</p></section>
+    <p class="note" style="margin:0">${n?`${n} días: ${tpl.map(x=>x==='bici_int'?'Intervalos (bici y soga, una semana cada uno)':TYPES[x].n).join(', ')}.`:'Sin días elegidos: todos los días serán de descanso.'} Los días sin marcar quedan como descanso.</p></section>
   <section class="card"><span class="set-l">Nivel</span>
     <div class="seg">${LVL.map((l,i)=>`<button data-act="level" data-v="${i+1}" aria-pressed="${st.level===i+1}">${l}</button>`).join('')}</div>
     <p class="note" style="margin:0">Cambia qué ejercicios aparecen, las repeticiones y los descansos.</p></section>
@@ -884,7 +911,7 @@ function showStep(){
     const it=st.it,e=EXI[it.id],tm=!!it.time;
     WO.timer=tm?{left:it.time,running:false,last:0,beeped:0}:null;
     root.innerHTML=`<div class="wo"><div class="wo-in">${top}
-      <span class="eyebrow">${it.sec} · Ejercicio ${st.ii+1} de ${WO.n} · ${st.circ?'Vuelta':it.id==='bici_int'?'Ronda':'Serie'} ${st.set} de ${it.sets}</span>
+      <span class="eyebrow">${it.sec} · Ejercicio ${st.ii+1} de ${WO.n} · ${st.circ?'Vuelta':it.id==='bici_int'||it.id==='soga'?'Ronda':'Serie'} ${st.set} de ${it.sets}</span>
       <div class="art" id="wo-art"></div>
       <button class="wo-name" data-act="detail" data-id="${e.id}">${e.n} <span class="note" style="font-family:var(--f-body);text-transform:none;font-size:13px;font-weight:500">ⓘ cómo hacerlo</span></button>
       <div class="big">${tm?`<span id="wo-time">${fmtT(it.time)}</span>`:`<span>${it.reps}</span><small>reps${e.side?' por lado':''}</small>`}${tm&&e.side?'<small>por lado</small>':''}</div>
@@ -901,7 +928,7 @@ function showStep(){
       <div class="row-btns"><button class="btn sec" data-act="wo-add">+15 s</button><button class="btn pri" data-act="wo-next">Saltar descanso</button></div>
       <span class="eyebrow">A continuación</span>
       <div class="art" id="wo-next-art"></div>
-      <div><div class="tt" style="font-size:18px">${e.n}</div><div class="note">${st.nextCirc?'Vuelta':nx.id==='bici_int'?'Ronda':'Serie'} ${st.nextSet} de ${nx.sets} · ${nx.reps?nx.reps+' reps':prescTxt(nx).big.replace(/^\d+ × /,'')}${e.side?' por lado':''}</div></div>
+      <div><div class="tt" style="font-size:18px">${e.n}</div><div class="note">${st.nextCirc?'Vuelta':nx.id==='bici_int'||nx.id==='soga'?'Ronda':'Serie'} ${st.nextSet} de ${nx.sets} · ${nx.reps?nx.reps+' reps':prescTxt(nx).big.replace(/^\d+ × /,'')}${e.side?' por lado':''}</div></div>
     </div></div>`;
     mountFig(document.getElementById('wo-next-art'),e.a,'Demostración: '+e.n);
   }
