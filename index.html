@@ -152,6 +152,10 @@ h2{font-size:22px;line-height:1.1}
 .dsel button{border:1.5px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 0;font-weight:700;font-size:13px}
 .dsel button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .set-l{font-weight:600}
+.alt-row{display:flex;flex-direction:column;gap:6px}
+.hero .seg{background:rgba(255,255,255,.08)}
+.hero .seg button{color:var(--hero-ink)}
+.hero .seg button[aria-pressed="true"]{background:var(--hero-ink);color:var(--hero-bg)}
 .note{font-size:13px;color:var(--muted)}
 .danger{color:var(--accent);border-color:var(--accent)!important}
 
@@ -278,6 +282,9 @@ const ANIM={
   cadera:{d:3600,kbA:[1,-1],kbB:[0,1],props:[{k:'mat',x:50,w:120}],p:[{hip:[108,122],t:180,aa:[150,150],ab:[66,148],wa:[128,120],wb:[124,120]},{hip:[118,126],t:184,aa:[150,150],ab:[66,148],wa:[136,122],wb:[132,122]}]},
   isquios:{d:3600,kb:[0,-1],eb:[0,1],props:[{k:'mat',x:50,w:120}],p:[{hip:[78,144],t:180,aa:[138,146],ab:[134,146],wa:[84,56],wb:[80,56]},{hip:[78,144],t:112,n:-10,aa:[138,146],ab:[134,146],wa:[136,140],wb:[132,140]}]},
   circulos:{d:2600,eb:[0,1],fn:ph=>{const s=[120,46],a=ph*360;return st({wa:add(s,mul(dir(a),45)),wb:add(s,mul(dir(a+8),45))});}},
+  boxeo:{d:900,eb:[0,1],fn:ph=>{const f=ph*2*Math.PI,a=Math.max(0,Math.sin(f)),b=Math.max(0,-Math.sin(f)),gA=[140,46],gB=[136,50],P=[168,46];
+    const mix=(g,k)=>[g[0]+(P[0]-g[0])*k,g[1]+(P[1]-g[1])*k];
+    return {hip:[120,93+1.5*Math.abs(Math.cos(f))],t:176,aa:[136,150],ab:[106,150],wa:mix(gA,a),wb:mix(gB,b)};}},
   caminata:{d:1300,kb:[1,0],eb:[1,0.5],fn:ph=>{const f=ph*2*Math.PI,s=Math.sin(f),c=Math.cos(f);
     return st({hip:[120,90+2*Math.abs(s)],aa:[120+18*s,150-7*Math.max(0,c)],ab:[120-18*s,150-7*Math.max(0,-c)],wa:[120-16*s,91],wb:[120+16*s,91]});}},
   bici:{d:1500,kb:[1,-0.5],eb:[0,1],props:[{k:'bike'}],fn:ph=>{const C=[122,128],f=ph*2*Math.PI;
@@ -482,6 +489,12 @@ const EX=[
  {id:'circulos',n:'Círculos de brazos',g:'movilidad',eq:'cuerpo',lv:1,t:[30,30,30],a:'circulos',m:'Hombros',
   p:['De pie, brazos estirados.','Hacé círculos amplios hacia adelante.','A mitad de tiempo, cambiá el sentido.','Movimiento suave y controlado.'],
   e:['Encoger los hombros.']},
+ {id:'marcha',n:'Marcha en el lugar',g:'cardio',eq:'cuerpo',lv:1,t:[60,60,60],a:'caminata',m:'Cardio de bajo impacto',nopick:1,
+  p:['De pie, marchá en el lugar subiendo las rodillas a una altura cómoda.','Acompañá con los brazos, como al caminar rápido.','Para subir la intensidad, levantá más las rodillas o marchá más rápido.','Mantené un ritmo en el que puedas hablar.'],
+  e:['Arrastrar los pies sin despegarlos del piso.']},
+ {id:'boxeo',n:'Boxeo al aire',g:'cardio',eq:'cuerpo',lv:1,t:[30,40,45],a:'boxeo',m:'Cardio, hombros, core',nopick:1,
+  p:['Piernas separadas, una adelante, rodillas apenas flexionadas.','Manos en guardia a la altura del mentón.','Lanzá golpes rectos alternando los brazos y volvé siempre a la guardia.','Girá un poco el torso con cada golpe y mantené los pies livianos.'],
+  e:['Estirar el codo del todo de golpe: dejalo apenas flexionado.']},
  {id:'caminata',n:'Caminata',g:'movilidad',eq:'cuerpo',lv:1,t:[1200,1200,1200],a:'caminata',m:'Recuperación activa',nopick:1,
   p:['Caminá a ritmo cómodo, mejor si es al aire libre.','Brazos sueltos y postura erguida.','Respirá tranquilo.'],
   e:[]},
@@ -509,7 +522,7 @@ const today=()=>{const n=new Date();return new Date(n.getFullYear(),n.getMonth()
 const LS='entreno-casa.v1';
 function defState(){return{v:1,settings:{days:[1,0,0,1,1,1,1],level:1,dur:30,start:ymd(monday(today()))},history:[],updatedAt:0};}
 function normalize(o){const d=defState();o=o||{};
-  return{v:1,settings:Object.assign(d.settings,o.settings||{}),history:Array.isArray(o.history)?o.history.slice(-400):[],updatedAt:o.updatedAt||0};}
+  return{v:1,settings:Object.assign(d.settings,o.settings||{}),history:Array.isArray(o.history)?o.history.slice(-400):[],alt:(o.alt&&typeof o.alt==='object')?Object.assign({},o.alt):{},updatedAt:o.updatedAt||0};}
 let S=defState();
 try{const raw=localStorage.getItem(LS);if(raw)S=normalize(JSON.parse(raw));}catch(e){}
 let remote=null,writing=false,dirty=false,syncMsg='Guardado en este dispositivo';
@@ -547,7 +560,11 @@ const TYPES={
   bici_z2:{n:'Bici: ritmo suave',d:'Pedaleo continuo y movilidad'},
   movil:{n:'Movilidad y paseo',d:'Recuperación activa'},
   extra:{n:'Movilidad exprés',d:'Rutina corta para días de descanso'},
+  bici_int_casa:{n:'Cardio en casa: intervalos',d:'Plan B sin salir: tramos fuertes en circuito, más core'},
+  bici_z2_casa:{n:'Cardio suave en casa',d:'Plan B sin salir: circuito continuo de bajo impacto'},
+  movil_casa:{n:'Movilidad y marcha en casa',d:'Plan B sin salir: recuperación activa'},
 };
+const OUTDOOR={bici_int:'Bici',bici_z2:'Bici',movil:'Caminata'};
 const TPL={1:['full'],2:['full','full'],3:['full','bici_int','full'],4:['sup','inf','bici_int','full'],
   5:['sup','inf','bici_int','full','bici_z2'],6:['sup','inf','bici_int','full','bici_z2','movil'],
   7:['sup','inf','bici_int','sup','inf','bici_z2','movil']};
@@ -560,8 +577,10 @@ function weekPlan(){const av=[];S.settings.days.forEach((v,i)=>{if(v)av.push(i);
 function weekInfo(mon){const wk=Math.max(0,weeksBetween(parse(S.settings.start),mon));const phase=wk%4;
   return{wk,phase,meso:Math.floor(wk/4),deload:phase===3,label:`Semana ${wk+1} · ${phase===3?'descarga':'carga '+(phase+1)+'/3'}`};}
 
-function buildSession(mon,di,forceType){
+function buildSession(mon,di,forceType,alt){
   const plan=weekPlan();const type=forceType||plan[di];if(!type)return null;
+  const outdoor=!!OUTDOOR[type],useAlt=outdoor&&(alt!=null?!!alt:!!(S.alt&&S.alt[ymd(addDays(mon,di))]));
+  if(useAlt)return buildIndoor(mon,di,type,plan);
   const occ=forceType?0:plan.slice(0,di).filter(t=>t===type).length;
   const lv=S.settings.level,dur=S.settings.dur,W=weekInfo(mon);
   const rnd=rng(ymd(mon)+'|'+type+'|'+occ+'|'+lv);
@@ -576,7 +595,7 @@ function buildSession(mon,di,forceType){
   const timed=(id,sec,sets=1,rest=10,extra)=>Object.assign({id,sets,time:sec,rest},extra||{});
   const restMain=[60,45,40][lv-1];
   const baseSets=dur===20?2:3,sets=W.deload?Math.max(2,baseSets-1):baseSets;
-  const s={type,name:TYPES[type].n,desc:TYPES[type].d,warm:[],main:[],cool:[],week:W,lv,dur};
+  const s={type,histType:type,outdoor,alt:false,name:TYPES[type].n,desc:TYPES[type].d,warm:[],main:[],cool:[],week:W,lv,dur};
   const mob=n=>{const ids=['gatovaca','cadera','isquios','circulos'];const out=[];
     while(out.length<n&&out.length<ids.length){const id=ids[Math.floor(rnd()*ids.length)];if(!out.includes(id))out.push(id);}
     return out.map(id=>timed(id,40,1,10));};
@@ -609,6 +628,46 @@ function buildSession(mon,di,forceType){
   s.est=estimate(s);
   return s;
 }
+// Plan B en casa para los días de bici o caminata: mismo objetivo, en circuito y sin equipo.
+function buildIndoor(mon,di,type,plan){
+  const occ=plan.slice(0,di).filter(t=>t===type).length;
+  const lv=S.settings.level,dur=S.settings.dur,W=weekInfo(mon);
+  const rnd=rng(ymd(mon)+'|'+type+'|casa|'+occ+'|'+lv);
+  const ht=type+'_casa';
+  const s={type,histType:ht,outdoor:true,alt:true,name:TYPES[ht].n,desc:TYPES[ht].d,warm:[],main:[],cool:[],week:W,lv,dur};
+  const timed=(id,sec,sets=1,rest=10,extra)=>Object.assign({id,sets,time:sec,rest},extra||{});
+  const choose=(ids,n)=>{ids=ids.slice();const out=[];while(out.length<n&&ids.length)out.push(ids.splice(Math.floor(rnd()*ids.length),1)[0]);return out;};
+  const restMain=[60,45,40][lv-1];
+  const mob=n=>choose(['gatovaca','cadera','isquios','circulos'],n).map(id=>timed(id,40,1,10));
+  const corePresc=id=>{const e=EXI[id],it={id,sets:2,rest:restMain};
+    if(e.r)it.reps=Math.min(25,Math.max(5,e.r[lv-1]+(W.deload?-2:W.phase)+W.meso*2));
+    else it.time=Math.min(90,Math.max(15,e.t[lv-1]+(W.deload?-5:W.phase*5)+W.meso*10));return it;};
+  if(type==='bici_int'){
+    const rounds=Math.max(4,[6,8,10][lv-1]+(dur===20?-2:dur===45?2:0)+(W.deload?-2:0)+Math.min(W.meso,2));
+    const work=[30,30,40][lv-1],rec=[60,50,40][lv-1];
+    const pool=['jacks','rodillas','boxeo'].concat(lv>=2?['escaladores','salto']:[],lv>=3?['burpees']:[]);
+    const ids=choose(pool,Math.min(4,pool.length)),vueltas=Math.max(1,Math.round(rounds/ids.length));
+    s.warm=[timed('marcha',120,1,10),timed('circulos',30),timed('jacks',30)];
+    s.main=ids.map(id=>timed(id,work,vueltas,rec,{restLabel:'Recuperación: marchá suave',circ:1}));
+    if(dur>=30)s.main=s.main.concat(choose(EX.filter(e=>e.g==='core'&&e.lv<=lv).map(e=>e.id),2).map(corePresc));
+    s.cool=mob(1);
+  }else if(type==='bici_z2'){
+    const lastDay=plan.lastIndexOf('bici_z2')===di&&plan.filter(Boolean).length>=5;
+    const min=Math.min(40,Math.max(15,dur+(lastDay&&dur>=30?5:0)+Math.min(W.meso,4)*2-(W.deload?5:0)));
+    const ids=['marcha','boxeo'].concat(choose(['sentadilla','rodillas','jacks','talones','puente','zancada'],3));
+    const secs=id=>['marcha','boxeo','rodillas','jacks'].includes(id)?60:40;
+    const vuelta=ids.reduce((a,id)=>a+secs(id)+15,0),vueltas=Math.max(2,Math.round(min*60/vuelta));
+    s.warm=[timed('circulos',30),timed('gatovaca',30)];
+    s.main=ids.map(id=>timed(id,secs(id),vueltas,15,{restLabel:'Pausa corta',circ:1}));
+    s.cool=mob(2);
+  }else{
+    const vueltas=Math.max(3,Math.round((dur-8)*60/200));
+    s.warm=['gatovaca','cadera','isquios','circulos'].map(id=>timed(id,40,1,10));
+    s.main=[timed('marcha',120,vueltas,10,{restLabel:'Pausa corta',circ:1}),timed('boxeo',60,vueltas,10,{restLabel:'Pausa corta',circ:1})];
+  }
+  s.est=estimate(s);
+  return s;
+}
 function estimate(s){let sec=0;
   for(const it of[...s.warm,...s.main,...s.cool]){const e=EXI[it.id];const w=(it.time||it.reps*3.5)*(e.side&&!it.time?2:1);
     sec+=it.sets*w+(it.sets-1)*it.rest+15+it.rest;}
@@ -632,9 +691,14 @@ function exRows(items){return items.map(it=>{const e=EXI[it.id],p=prescTxt(it);
     <span class="px">${p.big}${p.small?`<small>${p.small}</small>`:''}</span></button>`;}).join('');}
 function sessionLists(s){
   const sec=(t,items,note)=>items.length?`<div class="sec"><div class="sec-t"><span class="eyebrow">${t}</span>${note?`<span class="note">${note}</span>`:''}</div><div class="list">${exRows(items)}</div></div>`:'';
-  const restNote=s.main.some(i=>i.reps||i.time<120)?`descanso ${s.main.find(i=>i.rest)?.rest||0} s`:'';
+  const circ=s.main.filter(i=>i.circ);
+  const restNote=circ.length?`en circuito: ${circ[0].sets} vueltas`:s.main.some(i=>i.reps||i.time<120)?`descanso ${s.main.find(i=>i.rest)?.rest||0} s`:'';
   return sec('Entrada en calor',s.warm)+sec('Bloque principal',s.main,restNote)+sec('Vuelta a la calma',s.cool);
 }
+function altToggle(s,ds){if(!s.outdoor)return'';
+  return `<div class="alt-row"><span class="eyebrow">¿Llueve o no da para salir?</span><div class="seg" role="group" aria-label="Dónde entrenar">
+    <button data-act="alt" data-date="${ds}" data-v="0" aria-pressed="${!s.alt}">${OUTDOOR[s.type]}</button>
+    <button data-act="alt" data-date="${ds}" data-v="1" aria-pressed="${s.alt}">En casa</button></div></div>`;}
 function heroSession(s,dateStr,isToday){
   const done=doneOn(dateStr).length>0;
   const nEx=s.main.length,sets=Math.max(...s.main.map(i=>i.sets));
@@ -642,10 +706,11 @@ function heroSession(s,dateStr,isToday){
     <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
       <span class="eyebrow">${s.week.label}</span>${done?'<span class="pill ok">✓ Hecho</span>':''}</div>
     <div><h2>${s.name}</h2><div class="sub">${s.desc}</div></div>
-    <div class="stats"><div><b>${s.est}</b><span>minutos</span></div><div><b>${nEx}</b><span>ejercicios</span></div><div><b>${sets}</b><span>${s.type.startsWith('bici')&&s.main[0].sets>1?'rondas':'series'}</span></div></div>
+    ${altToggle(s,dateStr)}
+    <div class="stats"><div><b>${s.est}</b><span>minutos</span></div><div><b>${nEx}</b><span>ejercicios</span></div><div><b>${sets}</b><span>${s.alt?'vueltas':s.type.startsWith('bici')&&s.main[0].sets>1?'rondas':'series'}</span></div></div>
     <div class="row-btns">
       <button class="btn pri" data-act="start" data-date="${dateStr}">${done?'Repetir':'Empezar'}</button>
-      <button class="btn sec" data-act="toggle-done" data-date="${dateStr}" data-type="${s.type}" data-min="${s.est}">${done?'Desmarcar':'Marcar como hecha'}</button>
+      <button class="btn sec" data-act="toggle-done" data-date="${dateStr}" data-type="${s.histType}" data-min="${s.est}">${done?'Desmarcar':'Marcar como hecha'}</button>
     </div></section>`;
 }
 function renderHoy(){
@@ -683,7 +748,7 @@ function renderSemana(){
         <span class="dn"><span>${DC[i]}</span><b>${d.getDate()}</b></span>
         <span style="min-width:0"><span class="tt" style="display:block">${s?s.name:'Descanso'}</span><span class="note">${s?`≈ ${s.est} min · ${s.main.length} ejercicios`:(isT?'Hoy':'')}</span></span>
         <span>${done?'<span class="pill ok">✓</span>':''}</span></button>
-      ${open&&s?`<div class="day-b">${sessionLists(s)}<button class="btn pri wide" data-act="start" data-date="${ds}">Empezar esta rutina</button></div>`:''}
+      ${open&&s?`<div class="day-b">${altToggle(s,ds)}${sessionLists(s)}<button class="btn pri wide" data-act="start" data-date="${ds}">Empezar esta rutina</button></div>`:''}
     </div>`;
   }
   return h+`</div><p class="note">Los ejercicios cambian cada semana. Cada 4 semanas hay una semana de descarga con menos volumen.</p>`;
@@ -779,10 +844,20 @@ function vib(ms){try{navigator.vibrate&&navigator.vibrate(ms);}catch(e){}}
 function startWorkout(s){
   ensureAudio();
   const all=[...s.warm.map(x=>({...x,sec:'Entrada en calor'})),...s.main.map(x=>({...x,sec:'Bloque principal'})),...s.cool.map(x=>({...x,sec:'Vuelta a la calma'}))];
+  // Lista de series: los ejercicios marcados como circuito se hacen por vueltas (A, B, C, A, B, C...).
+  const works=[];
+  for(let ii=0;ii<all.length;){
+    const it=all[ii];
+    if(it.circ){let jj=ii;while(jj<all.length&&all[jj].circ)jj++;
+      const grp=all.slice(ii,jj),R=Math.max(...grp.map(x=>x.sets));
+      for(let r=1;r<=R;r++)grp.forEach((x,gi)=>{if(x.sets>=r)works.push({k:'work',it:x,set:r,ii:ii+gi,circ:true});});
+      ii=jj;}
+    else{for(let k=1;k<=it.sets;k++)works.push({k:'work',it,set:k,ii});ii++;}
+  }
   const steps=[];
-  all.forEach((it,ii)=>{for(let k=1;k<=it.sets;k++){steps.push({k:'work',it,set:k,ii});
-    const last=ii===all.length-1&&k===it.sets;
-    if(!last&&it.rest>0){const nx=k<it.sets?it:all[ii+1];steps.push({k:'rest',dur:it.rest,label:k<it.sets&&it.restLabel?it.restLabel:'Descanso',next:nx,nextSet:k<it.sets?k+1:1});}}});
+  works.forEach((w,j)=>{steps.push(w);const nw=works[j+1];
+    if(nw&&w.it.rest>0){const same=nw.it===w.it||(w.circ&&nw.circ);
+      steps.push({k:'rest',dur:w.it.rest,label:same&&w.it.restLabel?w.it.restLabel:'Descanso',next:nw.it,nextSet:nw.set,nextCirc:!!nw.circ});}});
   WO={s,steps,i:0,n:all.length,start:Date.now(),timer:null,exitArm:false,lock:null};
   try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(l=>{if(WO)WO.lock=l;}).catch(()=>{});}catch(e){}
   showStep();
@@ -790,7 +865,7 @@ function startWorkout(s){
 function closeWorkout(){if(WO&&WO.lock){try{WO.lock.release();}catch(e){}}WO=null;document.getElementById('wo-root').innerHTML='';render();}
 function finishWorkout(){
   const min=Math.max(1,Math.round((Date.now()-WO.start)/60000));
-  S.history.push({d:ymd(today()),type:WO.s.type,min});commit();
+  S.history.push({d:ymd(today()),type:WO.s.histType||WO.s.type,min});commit();
   const root=document.getElementById('wo-root');
   root.innerHTML=`<div class="wo"><div class="wo-in" style="justify-content:center">
     <span class="eyebrow">${WO.s.week.label}</span><h1 style="font-size:52px;text-transform:uppercase">Sesión completa</h1>
@@ -809,7 +884,7 @@ function showStep(){
     const it=st.it,e=EXI[it.id],tm=!!it.time;
     WO.timer=tm?{left:it.time,running:false,last:0,beeped:0}:null;
     root.innerHTML=`<div class="wo"><div class="wo-in">${top}
-      <span class="eyebrow">${it.sec} · Ejercicio ${st.ii+1} de ${WO.n} · ${it.id==='bici_int'?'Ronda':'Serie'} ${st.set} de ${it.sets}</span>
+      <span class="eyebrow">${it.sec} · Ejercicio ${st.ii+1} de ${WO.n} · ${st.circ?'Vuelta':it.id==='bici_int'?'Ronda':'Serie'} ${st.set} de ${it.sets}</span>
       <div class="art" id="wo-art"></div>
       <button class="wo-name" data-act="detail" data-id="${e.id}">${e.n} <span class="note" style="font-family:var(--f-body);text-transform:none;font-size:13px;font-weight:500">ⓘ cómo hacerlo</span></button>
       <div class="big">${tm?`<span id="wo-time">${fmtT(it.time)}</span>`:`<span>${it.reps}</span><small>reps${e.side?' por lado':''}</small>`}${tm&&e.side?'<small>por lado</small>':''}</div>
@@ -826,7 +901,7 @@ function showStep(){
       <div class="row-btns"><button class="btn sec" data-act="wo-add">+15 s</button><button class="btn pri" data-act="wo-next">Saltar descanso</button></div>
       <span class="eyebrow">A continuación</span>
       <div class="art" id="wo-next-art"></div>
-      <div><div class="tt" style="font-size:18px">${e.n}</div><div class="note">${nx.id==='bici_int'?'Ronda':'Serie'} ${st.nextSet} de ${nx.sets} · ${nx.reps?nx.reps+' reps':prescTxt(nx).big.replace(/^\d+ × /,'')}${e.side?' por lado':''}</div></div>
+      <div><div class="tt" style="font-size:18px">${e.n}</div><div class="note">${st.nextCirc?'Vuelta':nx.id==='bici_int'?'Ronda':'Serie'} ${st.nextSet} de ${nx.sets} · ${nx.reps?nx.reps+' reps':prescTxt(nx).big.replace(/^\d+ × /,'')}${e.side?' por lado':''}</div></div>
     </div></div>`;
     mountFig(document.getElementById('wo-next-art'),e.a,'Demostración: '+e.n);
   }
@@ -858,6 +933,8 @@ document.addEventListener('click',ev=>{
     case 'goto-day':{const d=parse(b.dataset.date);UI.weekOff=weeksBetween(monday(today()),monday(d));UI.selDay=dow(d);location.hash='#semana';break;}
     case 'wk':UI.weekOff+=+b.dataset.d;UI.selDay=UI.weekOff===0?dow(today()):0;render();break;
     case 'sel-day':{const i=+b.dataset.i;UI.selDay=UI.selDay===i?-1:i;render();break;}
+    case 'alt':{const ds=b.dataset.date;S.alt=S.alt||{};if(b.dataset.v==='1')S.alt[ds]=1;else delete S.alt[ds];
+      const lim=ymd(addDays(today(),-60));for(const k in S.alt)if(k<lim)delete S.alt[k];commit();break;}
     case 'filter':UI.filter=b.dataset.f;render();break;
     case 'day':st.days[+b.dataset.i]=st.days[+b.dataset.i]?0:1;commit();break;
     case 'level':st.level=+b.dataset.v;commit();break;
